@@ -46,6 +46,15 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null
   return result;
 }
 
+async function generateWithTimeout(input: Parameters<typeof generateText>[0]): Promise<string | null> {
+  try {
+    const result = await withTimeout(generateText(input), 1200);
+    return result ? compact(result.text) : null;
+  } catch {
+    return null;
+  }
+}
+
 function compact(text: string): string {
   return text
     .replaceAll('"', '')
@@ -68,15 +77,33 @@ export async function generateBotTableTalk(input: {
   }
 
   const persona = personas[input.difficulty];
-  const result = await withTimeout(
-    generateText({
-      model: openrouter(modelName()),
-      system: `You write poker table banter. Character: ${persona.name}. ${persona.brief} Max 12 words. No markdown.`,
-      prompt: `${persona.name} just chose ${input.action} ${input.amount} on ${input.street}. Pot is ${input.pot}. Write one short in-character table comment.`,
-      temperature: 0.9,
-    }),
-    1200,
-  );
+  return generateWithTimeout({
+    model: openrouter(modelName()),
+    system: `You write poker table banter. Character: ${persona.name}. ${persona.brief} Max 12 words. No markdown.`,
+    prompt: `${persona.name} just chose ${input.action} ${input.amount} on ${input.street}. Pot is ${input.pot}. Write one short in-character table comment.`,
+    temperature: 0.9,
+  });
+}
 
-  return result ? compact(result.text) : null;
+export async function generateBotShowdownTalk(input: {
+  difficulty: BotDifficulty;
+  won: boolean;
+  amount: number;
+  handRank: string | null;
+}): Promise<string | null> {
+  if (!process.env.OPENROUTER_API_KEY) {
+    return null;
+  }
+
+  const persona = personas[input.difficulty];
+  const result = input.won
+    ? `won ${input.amount} with ${input.handRank ?? 'no showdown'}`
+    : `lost the hand`;
+
+  return generateWithTimeout({
+    model: openrouter(modelName()),
+    system: `You write poker showdown reactions. Character: ${persona.name}. ${persona.brief} Max 12 words. No markdown.`,
+    prompt: `${persona.name} ${result}. Write one brief in-character reaction.`,
+    temperature: 0.85,
+  });
 }

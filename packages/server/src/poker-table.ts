@@ -41,6 +41,13 @@ type BotSeat = {
 
 type Seat = HumanSeat | BotSeat;
 
+export type BotTurnResult = {
+  completedHand: HandHistoryRecord | null;
+  action: PlayerAction | null;
+  difficulty: BotDifficulty | null;
+  pot: number;
+};
+
 const botNames: Record<BotDifficulty, string[]> = {
   BEGINNER: ['Fish Freddy', 'Loose Lucy', 'Calling Carl', 'River Rita'],
   INTERMEDIATE: ['TAG Terry', 'Position Paul', 'Value Vera', 'Range Rina'],
@@ -350,17 +357,19 @@ export class PokerTable {
     return this.applyPlayerAction(playerAction, player.isBot ? playerAction : null);
   }
 
-  runBotTurn(): { completedHand: HandHistoryRecord | null; action: PlayerAction | null } {
+  runBotTurn(): BotTurnResult {
     if (!this.gameState || this.gameState.phase === 'HAND_COMPLETE') {
-      return { completedHand: null, action: null };
+      return { completedHand: null, action: null, difficulty: null, pot: 0 };
     }
 
     const player = this.gameState.players[this.gameState.currentPlayerIndex];
 
     if (!player?.isBot) {
-      return { completedHand: null, action: null };
+      return { completedHand: null, action: null, difficulty: null, pot: 0 };
     }
 
+    const pot = this.gameState.players.reduce((sum, seat) => sum + seat.totalInvested, 0);
+    const difficulty = player.botDifficulty ?? 'BEGINNER';
     const legal = getLegalActions(this.gameState);
     const decision = getBotDecision(this.gameState, player, legal);
     const action: PlayerAction = {
@@ -374,6 +383,8 @@ export class PokerTable {
     return {
       ...this.applyPlayerAction(action, action),
       action,
+      difficulty,
+      pot,
     };
   }
 

@@ -1,6 +1,5 @@
 import type { ServerWebSocket } from 'bun';
 import {
-  DEFAULT_TABLE_CONFIG,
   clampBuyIn,
   sanitizeTableConfig,
   type AuthRequest,
@@ -11,7 +10,7 @@ import {
   type ServerToClientMessage,
   type SessionUser,
 } from '@river/shared';
-import { generateBotTableTalk } from './bot-personality';
+import { generateBotShowdownTalk, generateBotTableTalk } from './bot-personality';
 import { PokerTable } from './poker-table';
 import { SessionStore } from './session-store';
 
@@ -294,14 +293,32 @@ function scheduleBotTurn(table: PokerTable): void {
       store.recordHand(result.completedHand, table.id, result.completedHand.handNumber);
     }
 
-    if (result.action) {
-      const pot = table.summary().smallBlind + table.summary().bigBlind;
+    if (result.action && result.difficulty) {
       void generateBotTableTalk({
-        difficulty: result.action.playerId.includes('bot-') ? DEFAULT_TABLE_CONFIG.botDifficulty : DEFAULT_TABLE_CONFIG.botDifficulty,
+        difficulty: result.difficulty,
         action: result.action.type,
         amount: result.action.amount,
         street: result.action.street,
-        pot,
+        pot: result.pot,
+      }).then((text) => {
+        if (text) {
+          table.appendBotTalk(result.action?.playerId ?? '', text);
+          broadcastTable(table);
+        }
+      });
+    }
+
+    if (result.completedHand && result.action && result.difficulty) {
+      const botWinner = result.completedHand.winners.find((winner) => winner.playerId === result.action?.playerId);
+      const amount = result.completedHand.winners
+        .filter((winner) => winner.playerId === result.action?.playerId)
+        .reduce((sum, winner) => sum + winner.amount, 0);
+
+      void generateBotShowdownTalk({
+        difficulty: result.difficulty,
+        won: Boolean(botWinner),
+        amount,
+        handRank: botWinner?.handResult?.rank ?? null,
       }).then((text) => {
         if (text) {
           table.appendBotTalk(result.action?.playerId ?? '', text);
