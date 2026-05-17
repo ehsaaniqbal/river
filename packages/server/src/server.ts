@@ -5,10 +5,12 @@ import {
   type AuthRequest,
   type ClientToServerMessage,
   type CreateTableRequest,
+  type HistoryResponse,
   type JoinTableRequest,
   type LobbySnapshot,
   type ServerToClientMessage,
   type SessionUser,
+  type StatsResponse,
 } from '@river/shared';
 import { generateBotShowdownTalk, generateBotTableTalk } from './bot-personality';
 import { PokerTable } from './poker-table';
@@ -443,6 +445,18 @@ async function route(request: Request, server: Bun.Server<SocketData>): Promise<
 
     if (request.method === 'GET' && url.pathname === '/me') {
       return json({ user: requireUser(request) });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/stats') {
+      const user = requireUser(request);
+      const refreshed = store.getById(user.id) ?? user;
+      return json({ user: refreshed } satisfies StatsResponse);
+    }
+
+    if (request.method === 'GET' && url.pathname === '/history') {
+      const user = requireUser(request);
+      const limit = Number(url.searchParams.get('limit') ?? 25);
+      return json({ hands: store.listHandsForUser(user.id, limit) } satisfies HistoryResponse);
     }
 
     if (request.method === 'GET' && url.pathname === '/lobby') {

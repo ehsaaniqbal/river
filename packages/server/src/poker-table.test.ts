@@ -10,6 +10,9 @@ function user(id: string): SessionUser {
     handsPlayed: 0,
     handsWon: 0,
     totalProfit: 0,
+    vpip: 0,
+    pfr: 0,
+    biggestPotWon: 0,
     createdAt: 1,
     lastSeenAt: 1,
   };

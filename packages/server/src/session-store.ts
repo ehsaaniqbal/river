@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import type { HandHistoryRecord, SessionUser } from '@river/shared';
+import { playerHandStatsDelta } from './session-stats';
 
 type UserRow = {
   id: string;
@@ -9,11 +10,15 @@ type UserRow = {
   hands_played: number;
   hands_won: number;
   total_profit: number;
+  vpip_count: number;
+  pfr_count: number;
+  biggest_pot_won: number;
   created_at: number;
   last_seen_at: number;
 };
 
 const DEFAULT_CHIP_BALANCE = 10000;
+const HISTORY_SCAN_LIMIT = 500;
 
 function rowToUser(row: UserRow): SessionUser {
   return {
@@ -23,6 +28,9 @@ function rowToUser(row: UserRow): SessionUser {
     handsPlayed: row.hands_played,
     handsWon: row.hands_won,
     totalProfit: row.total_profit,
+    vpip: row.hands_played > 0 ? (row.vpip_count / row.hands_played) * 100 : 0,
+    pfr: row.hands_played > 0 ? (row.pfr_count / row.hands_played) * 100 : 0,
+    biggestPotWon: row.biggest_pot_won,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
   };
@@ -46,6 +54,9 @@ export class SessionStore {
         hands_played integer not null default 0,
         hands_won integer not null default 0,
         total_profit integer not null default 0,
+        vpip_count integer not null default 0,
+        pfr_count integer not null default 0,
+        biggest_pot_won integer not null default 0,
         created_at integer not null,
         last_seen_at integer not null
       );
@@ -58,6 +69,24 @@ export class SessionStore {
         created_at integer not null
       );
     `);
+    this.ensureUserColumns();
+  }
+
+  private ensureUserColumns(): void {
+    const columns = new Set(
+      this.db.query<{ name: string }, []>('pragma table_info(users)').all().map((column) => column.name),
+    );
+    const migrations: Array<[string, string]> = [
+      ['vpip_count', 'alter table users add column vpip_count integer not null default 0'],
+      ['pfr_count', 'alter table users add column pfr_count integer not null default 0'],
+      ['biggest_pot_won', 'alter table users add column biggest_pot_won integer not null default 0'],
+    ];
+
+    for (const [column, statement] of migrations) {
+      if (!columns.has(column)) {
+        this.db.exec(statement);
+      }
+    }
   }
 
   authenticate(username: string, existingToken?: string): { user: SessionUser; token: string } {
@@ -87,8 +116,21 @@ export class SessionStore {
     const userId = crypto.randomUUID();
     const newToken = token();
     this.db.query(`
-      insert into users (id, username, token, chip_balance, hands_played, hands_won, total_profit, created_at, last_seen_at)
-      values (?, ?, ?, ?, 0, 0, 0, ?, ?)
+      insert into users (
+        id,
+        username,
+        token,
+        chip_balance,
+        hands_played,
+        hands_won,
+        total_profit,
+        vpip_count,
+        pfr_count,
+        biggest_pot_won,
+        created_at,
+        last_seen_at
+      )
+      values (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, ?, ?)
     `).run(userId, normalized, newToken, DEFAULT_CHIP_BALANCE, now, now);
 
     return {
@@ -100,6 +142,9 @@ export class SessionStore {
         handsPlayed: 0,
         handsWon: 0,
         totalProfit: 0,
+        vpip: 0,
+        pfr: 0,
+        biggestPotWon: 0,
         createdAt: now,
         lastSeenAt: now,
       },
@@ -119,6 +164,12 @@ export class SessionStore {
     return { ...rowToUser(row), lastSeenAt: now };
   }
 
+  getById(userId: string): SessionUser | null {
+    const row = this.db.query<UserRow, [string]>('select * from users where id = ?').get(userId);
+
+    return row ? rowToUser(row) : null;
+  }
+
   updateChipBalance(userId: string, delta: number): SessionUser {
     this.db.query('update users set chip_balance = max(chip_balance + ?, 0), last_seen_at = ? where id = ?')
       .run(delta, Date.now(), userId);
@@ -135,23 +186,54 @@ export class SessionStore {
     this.db.query('insert into hands (id, table_id, hand_number, payload, created_at) values (?, ?, ?, ?, ?)')
       .run(crypto.randomUUID(), tableId, handNumber, JSON.stringify(payload), Date.now());
 
-    const winners = new Set(payload.winners.map((winner) => winner.playerId));
-
     for (const player of payload.players) {
+      const delta = playerHandStatsDelta(payload, player.id);
+
       this.db.query(`
         update users
         set
           hands_played = hands_played + 1,
           hands_won = hands_won + ?,
           total_profit = total_profit + ?,
+          vpip_count = vpip_count + ?,
+          pfr_count = pfr_count + ?,
+          biggest_pot_won = max(biggest_pot_won, ?),
           last_seen_at = ?
         where id = ?
       `).run(
-        winners.has(player.id) ? 1 : 0,
-        player.stackAfter - player.stackBefore,
+        delta.won ? 1 : 0,
+        delta.profit,
+        delta.vpip ? 1 : 0,
+        delta.pfr ? 1 : 0,
+        delta.biggestPotWon,
         Date.now(),
         player.id,
       );
     }
+  }
+
+  listHandsForUser(userId: string, limit = 25): HandHistoryRecord[] {
+    const clampedLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
+    const rows = this.db.query<{ payload: string }, [number]>(`
+      select payload
+      from hands
+      order by created_at desc
+      limit ?
+    `).all(HISTORY_SCAN_LIMIT);
+    const hands: HandHistoryRecord[] = [];
+
+    for (const row of rows) {
+      const hand = JSON.parse(row.payload) as HandHistoryRecord;
+
+      if (hand.players.some((player) => player.id === userId)) {
+        hands.push(hand);
+      }
+
+      if (hands.length >= clampedLimit) {
+        break;
+      }
+    }
+
+    return hands;
   }
 }

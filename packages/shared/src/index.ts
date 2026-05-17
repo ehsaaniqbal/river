@@ -19,6 +19,9 @@ export type SessionUser = {
   handsPlayed: number;
   handsWon: number;
   totalProfit: number;
+  vpip: number;
+  pfr: number;
+  biggestPotWon: number;
   createdAt: number;
   lastSeenAt: number;
 };
@@ -31,6 +34,14 @@ export type AuthRequest = {
 export type AuthResponse = {
   user: SessionUser;
   token: string;
+};
+
+export type StatsResponse = {
+  user: SessionUser;
+};
+
+export type HistoryResponse = {
+  hands: HandHistoryRecord[];
 };
 
 export type ApiErrorResponse = {
