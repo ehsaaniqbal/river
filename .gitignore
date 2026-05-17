@@ -56,3 +56,4 @@ temp/
 .cache/
 **/.cache/
 .agents/
+docs
