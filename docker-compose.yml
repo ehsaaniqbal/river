@@ -3,17 +3,16 @@ services:
     build:
       context: .
       args:
-        NEXT_PUBLIC_RIVER_SERVER_URL: ${NEXT_PUBLIC_RIVER_SERVER_URL:-http://localhost:8787}
+        NEXT_PUBLIC_RIVER_SERVER_URL: ${NEXT_PUBLIC_RIVER_SERVER_URL:-}
     ports:
       - "3000:3000"
-      - "8787:8787"
     environment:
       NODE_ENV: production
-      PORT: "8787"
+      PORT: "3000"
       RIVER_SERVER_PORT: "8787"
       RIVER_SQLITE_PATH: /data/river.sqlite
       RIVER_WEB_ORIGIN: ${RIVER_WEB_ORIGIN:-http://localhost:3000}
-      NEXT_PUBLIC_RIVER_SERVER_URL: ${NEXT_PUBLIC_RIVER_SERVER_URL:-http://localhost:8787}
+      NEXT_PUBLIC_RIVER_SERVER_URL: ${NEXT_PUBLIC_RIVER_SERVER_URL:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       RIVER_LLM_MODEL: ${RIVER_LLM_MODEL:-}
     volumes:

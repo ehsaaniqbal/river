@@ -27,7 +27,7 @@ type PlayerSession = {
   tableId: string | null;
 };
 
-const port = Number(process.env.PORT ?? process.env.RIVER_SERVER_PORT ?? 8787);
+const port = Number(process.env.RIVER_SERVER_PORT ?? process.env.PORT ?? 8787);
 const sessions = new Map<string, PlayerSession>();
 const tables = new Map<string, PokerTable>();
 const store = new SessionStore();

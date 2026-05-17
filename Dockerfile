@@ -8,7 +8,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN corepack enable \
   && apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+  && apt-get install -y --no-install-recommends ca-certificates curl gettext-base nginx-light unzip \
   && rm -rf /var/lib/apt/lists/* \
   && curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14" \
   && ln -s /root/.bun/bin/bun /usr/local/bin/bun
@@ -20,18 +20,20 @@ COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile
 
-ARG NEXT_PUBLIC_RIVER_SERVER_URL=http://localhost:8787
+ARG NEXT_PUBLIC_RIVER_SERVER_URL=
 ENV NEXT_PUBLIC_RIVER_SERVER_URL=$NEXT_PUBLIC_RIVER_SERVER_URL
 
 RUN pnpm build
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
-ENV PORT=8787
+ENV PORT=3000
 ENV RIVER_SERVER_PORT=8787
 ENV RIVER_SQLITE_PATH=/data/river.sqlite
 
-EXPOSE 3000 8787
+COPY nginx.conf.template /etc/nginx/templates/river.conf.template
+
+EXPOSE 3000
 VOLUME ["/data"]
 
-CMD ["bash", "-lc", "mkdir -p /data; cd /app/packages/server; bun src/server.ts & server_pid=$!; cd /app/packages/web; pnpm start --hostname 0.0.0.0 --port 3000 & web_pid=$!; trap 'kill $server_pid $web_pid 2>/dev/null' TERM INT; wait -n $server_pid $web_pid"]
+CMD ["bash", "-lc", "mkdir -p /data; export NGINX_PORT=${PORT:-3000}; envsubst '$$NGINX_PORT' < /etc/nginx/templates/river.conf.template > /etc/nginx/conf.d/default.conf; cd /app/packages/server; RIVER_SERVER_PORT=${RIVER_SERVER_PORT:-8787} bun src/server.ts & server_pid=$!; cd /app/packages/web; pnpm start --hostname 127.0.0.1 --port 3001 & web_pid=$!; nginx -g 'daemon off;' & nginx_pid=$!; trap 'kill $server_pid $web_pid $nginx_pid 2>/dev/null' TERM INT; wait -n $server_pid $web_pid $nginx_pid"]

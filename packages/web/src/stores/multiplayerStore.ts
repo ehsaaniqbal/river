@@ -42,7 +42,15 @@ type MultiplayerStore = {
 let socket: WebSocket | null = null;
 
 function serverHttpUrl(): string {
-  return process.env.NEXT_PUBLIC_RIVER_SERVER_URL ?? 'http://localhost:8787';
+  if (process.env.NEXT_PUBLIC_RIVER_SERVER_URL) {
+    return process.env.NEXT_PUBLIC_RIVER_SERVER_URL;
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:3000';
 }
 
 function serverWsUrl(): string {
