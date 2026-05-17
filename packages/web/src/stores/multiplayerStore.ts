@@ -31,6 +31,7 @@ type MultiplayerStore = {
   disconnect: () => void;
   createTable: (config: TableConfig, buyIn: number) => void;
   joinTable: (table: LobbyTableSummary, buyIn?: number) => void;
+  joinTableByCode: (code: string, buyIn: number) => void;
   leaveTable: () => void;
   startTable: () => void;
   sendAction: (action: ActionType, amount?: number) => Promise<void>;
@@ -160,6 +161,9 @@ export const useMultiplayerStore = create<MultiplayerStore>((set) => ({
   },
   joinTable: (table, buyIn) => {
     send({ type: 'JOIN_TABLE', tableId: table.id, buyIn: buyIn ?? table.minBuyIn });
+  },
+  joinTableByCode: (code, buyIn) => {
+    send({ type: 'JOIN_TABLE', code: code.trim(), buyIn });
   },
   leaveTable: () => {
     send({ type: 'LEAVE_TABLE' });

@@ -182,6 +182,8 @@ export class PokerTable {
       humanPlayers: humans.length,
       occupiedSeats: this.seats.length,
       isPrivate: this.config.isPrivate,
+      fillWithBots: this.config.fillWithBots,
+      botDifficulty: this.config.botDifficulty,
       phase: this.gameState?.phase ?? 'LOBBY',
       hostUsername: host?.username ?? 'Table',
     };

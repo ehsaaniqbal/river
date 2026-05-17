@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { LogOut, MessageSquare, Play, Plus, Send, Users } from 'lucide-react';
-import type { GameState, Player } from '@river/engine';
+import type { BotDifficulty, GameState, Player } from '@river/engine';
 import { getLegalActions } from '@river/engine';
 import { AppHeader } from '@/components/AppHeader';
 import { ActionButtons } from '@/components/game/ActionButtons';
@@ -18,6 +18,36 @@ import {
   useMultiplayerStore,
 } from '@/stores/multiplayerStore';
 
+type TableFormState = {
+  name: string;
+  smallBlind: string;
+  bigBlind: string;
+  minBuyIn: string;
+  maxBuyIn: string;
+  seatBuyIn: string;
+  maxPlayers: string;
+  isPrivate: boolean;
+  fillWithBots: boolean;
+  botDifficulty: BotDifficulty;
+};
+
+const botDifficulties: BotDifficulty[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED'];
+
+function defaultTableForm(): TableFormState {
+  return {
+    name: defaultCreateTableConfig.name,
+    smallBlind: String(defaultCreateTableConfig.smallBlind),
+    bigBlind: String(defaultCreateTableConfig.bigBlind),
+    minBuyIn: String(defaultCreateTableConfig.minBuyIn),
+    maxBuyIn: String(defaultCreateTableConfig.maxBuyIn),
+    seatBuyIn: String(defaultCreateTableConfig.minBuyIn),
+    maxPlayers: String(defaultCreateTableConfig.maxPlayers),
+    isPrivate: defaultCreateTableConfig.isPrivate,
+    fillWithBots: defaultCreateTableConfig.fillWithBots,
+    botDifficulty: defaultCreateTableConfig.botDifficulty,
+  };
+}
+
 export default function LobbyPage() {
   const status = useMultiplayerStore((state) => state.status);
   const user = useMultiplayerStore((state) => state.user);
@@ -30,13 +60,15 @@ export default function LobbyPage() {
   const error = useMultiplayerStore((state) => state.error);
   const connect = useMultiplayerStore((state) => state.connect);
   const joinTable = useMultiplayerStore((state) => state.joinTable);
+  const joinTableByCode = useMultiplayerStore((state) => state.joinTableByCode);
   const createTable = useMultiplayerStore((state) => state.createTable);
   const leaveTable = useMultiplayerStore((state) => state.leaveTable);
   const startTable = useMultiplayerStore((state) => state.startTable);
+  const setBotFill = useMultiplayerStore((state) => state.setBotFill);
   const [username, setUsername] = useState('');
-  const [tableName, setTableName] = useState(defaultCreateTableConfig.name);
-  const [buyIn, setBuyIn] = useState(String(defaultCreateTableConfig.minBuyIn));
-  const [maxPlayers, setMaxPlayers] = useState(String(defaultCreateTableConfig.maxPlayers));
+  const [tableForm, setTableForm] = useState(defaultTableForm);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinBuyIn, setJoinBuyIn] = useState(String(defaultCreateTableConfig.minBuyIn));
 
   useEffect(() => {
     reconnectWithStoredIdentity();
@@ -51,9 +83,25 @@ export default function LobbyPage() {
     event.preventDefault();
     createTable({
       ...defaultCreateTableConfig,
-      name: tableName,
-      maxPlayers: Number(maxPlayers),
-    }, Number(buyIn));
+      name: tableForm.name,
+      smallBlind: Number(tableForm.smallBlind),
+      bigBlind: Number(tableForm.bigBlind),
+      minBuyIn: Number(tableForm.minBuyIn),
+      maxBuyIn: Number(tableForm.maxBuyIn),
+      maxPlayers: Number(tableForm.maxPlayers),
+      isPrivate: tableForm.isPrivate,
+      fillWithBots: tableForm.fillWithBots,
+      botDifficulty: tableForm.botDifficulty,
+    }, Number(tableForm.seatBuyIn));
+  };
+
+  const submitJoinCode = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    joinTableByCode(joinCode, Number(joinBuyIn));
+  };
+
+  const setTableField = <K extends keyof TableFormState>(key: K, value: TableFormState[K]) => {
+    setTableForm((form) => ({ ...form, [key]: value }));
   };
 
   return (
@@ -117,25 +165,25 @@ export default function LobbyPage() {
                   <label className="grid gap-1 text-sm text-[var(--text-muted)]">
                     Name
                     <input
-                      value={tableName}
-                      onChange={(event) => setTableName(event.target.value)}
+                      value={tableForm.name}
+                      onChange={(event) => setTableField('name', event.target.value)}
                       className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                     />
                   </label>
-                  <label className="grid gap-1 text-sm text-[var(--text-muted)]">
-                    Buy-in
-                    <input
-                      value={buyIn}
-                      onChange={(event) => setBuyIn(event.target.value)}
-                      inputMode="numeric"
-                      className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-                    />
-                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <NumberField label="Small blind" value={tableForm.smallBlind} onChange={(value) => setTableField('smallBlind', value)} />
+                    <NumberField label="Big blind" value={tableForm.bigBlind} onChange={(value) => setTableField('bigBlind', value)} />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <NumberField label="Min buy-in" value={tableForm.minBuyIn} onChange={(value) => setTableField('minBuyIn', value)} />
+                    <NumberField label="Max buy-in" value={tableForm.maxBuyIn} onChange={(value) => setTableField('maxBuyIn', value)} />
+                  </div>
+                  <NumberField label="Your buy-in" value={tableForm.seatBuyIn} onChange={(value) => setTableField('seatBuyIn', value)} />
                   <label className="grid gap-1 text-sm text-[var(--text-muted)]">
                     Seats
                     <select
-                      value={maxPlayers}
-                      onChange={(event) => setMaxPlayers(event.target.value)}
+                      value={tableForm.maxPlayers}
+                      onChange={(event) => setTableField('maxPlayers', event.target.value)}
                       className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                     >
                       {[2, 3, 4, 5, 6, 7, 8, 9].map((count) => (
@@ -143,9 +191,44 @@ export default function LobbyPage() {
                       ))}
                     </select>
                   </label>
+                  <label className="grid gap-1 text-sm text-[var(--text-muted)]">
+                    Bot style
+                    <select
+                      value={tableForm.botDifficulty}
+                      onChange={(event) => setTableField('botDifficulty', event.target.value as BotDifficulty)}
+                      className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    >
+                      {botDifficulties.map((difficulty) => (
+                        <option key={difficulty} value={difficulty}>{difficulty}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="grid gap-2">
+                    <ToggleField label="Private table" checked={tableForm.isPrivate} onChange={(checked) => setTableField('isPrivate', checked)} />
+                    <ToggleField label="Fill empty seats with bots" checked={tableForm.fillWithBots} onChange={(checked) => setTableField('fillWithBots', checked)} />
+                  </div>
                   <Button type="submit">
                     <Plus className="size-4" />
                     Create
+                  </Button>
+                </div>
+              </form>
+
+              <form onSubmit={submitJoinCode} className="rounded-md border border-emerald-100/12 bg-white/[0.045] p-4">
+                <div className="mb-3 font-serif text-2xl">Join by Code</div>
+                <div className="grid gap-3">
+                  <label className="grid gap-1 text-sm text-[var(--text-muted)]">
+                    Code
+                    <input
+                      value={joinCode}
+                      onChange={(event) => setJoinCode(event.target.value)}
+                      placeholder="RIVER-4829"
+                      className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 font-mono text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </label>
+                  <NumberField label="Buy-in" value={joinBuyIn} onChange={setJoinBuyIn} />
+                  <Button type="submit" variant="secondary">
+                    Join
                   </Button>
                 </div>
               </form>
@@ -180,10 +263,15 @@ export default function LobbyPage() {
                       <div className="mt-1 font-mono text-xs text-[var(--text-muted)]">{currentTable.code}</div>
                     </div>
                     {currentTable.hostUsername === user.username && (
-                      <Button type="button" onClick={startTable}>
-                        <Play className="size-4" />
-                        Start
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" onClick={() => setBotFill(!currentTable.fillWithBots)}>
+                          {currentTable.fillWithBots ? 'Bots On' : 'Bots Off'}
+                        </Button>
+                        <Button type="button" onClick={startTable}>
+                          <Play className="size-4" />
+                          Start
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -206,6 +294,34 @@ export default function LobbyPage() {
   );
 }
 
+function NumberField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="grid gap-1 text-sm text-[var(--text-muted)]">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        inputMode="numeric"
+        className="h-9 rounded-md border border-white/12 bg-[#081510] px-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+      />
+    </label>
+  );
+}
+
+function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex min-h-9 items-center justify-between gap-3 rounded-md border border-white/12 bg-[#081510]/70 px-3 text-sm text-[var(--text-muted)]">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="size-4 accent-[#e8c96a]"
+      />
+    </label>
+  );
+}
+
 function TableBrowser({ tables, onJoin }: { tables: ReturnType<typeof useMultiplayerStore.getState>['tables']; onJoin: ReturnType<typeof useMultiplayerStore.getState>['joinTable'] }) {
   return (
     <div className="rounded-md border border-emerald-100/12 bg-white/[0.045] p-4">
@@ -222,7 +338,9 @@ function TableBrowser({ tables, onJoin }: { tables: ReturnType<typeof useMultipl
               <div className="mt-1 flex flex-wrap gap-3 font-mono text-xs text-[var(--text-muted)]">
                 <span>{table.code}</span>
                 <span>{table.smallBlind}/{table.bigBlind}</span>
+                <span>{table.minBuyIn}-{table.maxBuyIn}</span>
                 <span>{table.occupiedSeats}/{table.maxPlayers}</span>
+                <span>{table.fillWithBots ? table.botDifficulty : 'No bots'}</span>
                 <span>{table.phase}</span>
               </div>
             </div>

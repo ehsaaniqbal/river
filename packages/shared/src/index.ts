@@ -102,6 +102,8 @@ export type LobbyTableSummary = {
   humanPlayers: number;
   occupiedSeats: number;
   isPrivate: boolean;
+  fillWithBots: boolean;
+  botDifficulty: BotDifficulty;
   phase: GameState['phase'] | 'LOBBY';
   hostUsername: string;
 };
