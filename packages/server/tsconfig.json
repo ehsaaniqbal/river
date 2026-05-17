@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "types": ["bun-types"],
+    "paths": {
+      "@river/engine": ["../engine/src/index.ts"],
+      "@river/engine/*": ["../engine/src/*"],
+      "@river/shared": ["../shared/src/index.ts"],
+      "@river/shared/*": ["../shared/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

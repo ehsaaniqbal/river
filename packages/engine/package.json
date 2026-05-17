@@ -1,0 +1,22 @@
+{
+  "name": "@river/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./game-engine": "./src/game-engine.ts",
+    "./hand-evaluator": "./src/hand-evaluator.ts",
+    "./pot-calculator": "./src/pot-calculator.ts",
+    "./deck": "./src/deck.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
+  }
+}

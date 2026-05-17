@@ -1,0 +1,19 @@
+{
+  "name": "river",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @river/web dev",
+    "dev:server": "pnpm --filter @river/server dev",
+    "build": "turbo run build",
+    "start": "pnpm --filter @river/web start",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.14"
+  }
+}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="River">
+  <rect width="64" height="64" rx="14" fill="#020504"/>
+  <rect x="4.5" y="4.5" width="55" height="55" rx="11.5" fill="none" stroke="#F5F0E8" stroke-opacity="0.1"/>
+  <text x="32" y="45" text-anchor="middle" fill="#E8C96A" font-family="Georgia, 'Times New Roman', serif" font-size="38" font-weight="400">R</text>
+</svg>
