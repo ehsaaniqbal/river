@@ -14,10 +14,11 @@ import type {
   HandHistoryRecord,
   LobbyTableSummary,
   PublicGameState,
-  PublicPlayer,
+  PublicPlayerMeta,
   SessionUser,
   TableConfig,
 } from '@river/shared';
+import { createPublicGameState } from '@river/shared';
 import { getBotDecision } from './bot-strategy';
 
 type HumanSeat = {
@@ -181,29 +182,11 @@ export class PokerTable {
       return null;
     }
 
-    const showdownIds = new Set(
-      this.gameState.winners
-        .filter((winner) => winner.showCards)
-        .map((winner) => winner.playerId),
-    );
-    const players: PublicPlayer[] = this.gameState.players.map((player) => {
-      const seat = this.seats.find((candidate) => candidate.userId === player.id);
-      const reveal = player.id === viewerId || (this.gameState?.phase === 'HAND_COMPLETE' && showdownIds.has(player.id));
-
-      return {
-        ...player,
-        holeCards: reveal ? player.holeCards : null,
-        connected: seat?.kind === 'BOT' ? true : seat?.connected ?? false,
-        disconnectDeadline: seat?.kind === 'HUMAN' ? seat.disconnectDeadline : null,
-        isHost: seat?.kind === 'HUMAN' ? seat.isHost : false,
-      };
+    return createPublicGameState({
+      state: this.gameState,
+      viewerId,
+      players: this.publicPlayerMeta(),
     });
-
-    return {
-      ...this.gameState,
-      players,
-      deckCount: this.gameState.deck.length,
-    };
   }
 
   tableMessages(): ChatMessage[] {
@@ -492,6 +475,15 @@ export class PokerTable {
       const player = state.players.find((candidate) => candidate.id === seat.userId);
       return player ? { ...seat, stack: player.stack } : seat;
     });
+  }
+
+  private publicPlayerMeta(): PublicPlayerMeta[] {
+    return this.seats.map((seat) => ({
+      playerId: seat.userId,
+      connected: seat.kind === 'BOT' ? true : seat.connected,
+      disconnectDeadline: seat.kind === 'HUMAN' ? seat.disconnectDeadline : null,
+      isHost: seat.kind === 'HUMAN' ? seat.isHost : false,
+    }));
   }
 
   private fillBotsIfNeeded(): void {
