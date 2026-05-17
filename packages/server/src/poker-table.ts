@@ -203,7 +203,7 @@ export class PokerTable {
       throw new Error('Table is full.');
     }
 
-    if (this.gameState) {
+    if (this.gameState && this.gameState.phase !== 'HAND_COMPLETE') {
       throw new Error('This table is already in a hand. Join the next one.');
     }
 
@@ -440,7 +440,7 @@ export class PokerTable {
       throw new Error('No hand in progress.');
     }
 
-    const nextState = applyAction(this.gameState, action);
+    const nextState = this.foldExpiredDisconnectedPlayers(applyAction(this.gameState, action));
     this.gameState = nextState;
     this.syncStacksFromState(nextState);
     const completedHand = nextState.phase === 'HAND_COMPLETE'
@@ -468,6 +468,31 @@ export class PokerTable {
       street: this.gameState.street,
       timestamp: Date.now(),
     }, null);
+  }
+
+  private foldExpiredDisconnectedPlayers(state: GameState): GameState {
+    let nextState = state;
+
+    while (nextState.phase !== 'HAND_COMPLETE') {
+      const currentPlayer = nextState.players[nextState.currentPlayerIndex];
+      const currentSeat = currentPlayer
+        ? this.seats.find((seat): seat is HumanSeat => seat.kind === 'HUMAN' && seat.userId === currentPlayer.id)
+        : null;
+
+      if (!currentPlayer || !currentSeat || currentSeat.connected || currentSeat.disconnectDeadline === null || currentSeat.disconnectDeadline > Date.now()) {
+        return nextState;
+      }
+
+      nextState = applyAction(nextState, {
+        type: 'FOLD',
+        amount: 0,
+        playerId: currentPlayer.id,
+        street: nextState.street,
+        timestamp: Date.now(),
+      });
+    }
+
+    return nextState;
   }
 
   private syncStacksFromState(state: GameState): void {
