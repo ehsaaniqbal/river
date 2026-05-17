@@ -123,7 +123,10 @@ export type HandHistoryRecord = {
   id: string;
   tableId: string;
   handNumber: number;
-  players: Array<Pick<Player, 'id' | 'name' | 'position' | 'stack'>>;
+  players: Array<Pick<Player, 'id' | 'name' | 'position'> & {
+    stackBefore: number;
+    stackAfter: number;
+  }>;
   holeCards: Record<string, [Card, Card]>;
   streets: Array<{
     street: Street;

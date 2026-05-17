@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import type { SessionUser } from '@river/shared';
+import type { HandHistoryRecord, SessionUser } from '@river/shared';
 
 type UserRow = {
   id: string;
@@ -131,8 +131,27 @@ export class SessionStore {
     return rowToUser(row);
   }
 
-  recordHand(payload: unknown, tableId: string, handNumber: number): void {
+  recordHand(payload: HandHistoryRecord, tableId: string, handNumber: number): void {
     this.db.query('insert into hands (id, table_id, hand_number, payload, created_at) values (?, ?, ?, ?, ?)')
       .run(crypto.randomUUID(), tableId, handNumber, JSON.stringify(payload), Date.now());
+
+    const winners = new Set(payload.winners.map((winner) => winner.playerId));
+
+    for (const player of payload.players) {
+      this.db.query(`
+        update users
+        set
+          hands_played = hands_played + 1,
+          hands_won = hands_won + ?,
+          total_profit = total_profit + ?,
+          last_seen_at = ?
+        where id = ?
+      `).run(
+        winners.has(player.id) ? 1 : 0,
+        player.stackAfter - player.stackBefore,
+        Date.now(),
+        player.id,
+      );
+    }
   }
 }

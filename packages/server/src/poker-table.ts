@@ -113,7 +113,10 @@ function handHistoryFromState(state: GameState, tableId: string): HandHistoryRec
       id: player.id,
       name: player.name,
       position: player.position,
-      stack: player.stack,
+      stackBefore: player.stack + player.totalInvested - state.winners
+        .filter((winner) => winner.playerId === player.id)
+        .reduce((sum, winner) => sum + winner.amount, 0),
+      stackAfter: player.stack,
     })),
     holeCards,
     streets,

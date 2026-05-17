@@ -105,6 +105,10 @@ function sendError(socket: ServerWebSocket<SocketData>, message: string): void {
   send(socket, { type: 'ERROR', message });
 }
 
+function sendSession(session: PlayerSession): void {
+  send(session.socket, { type: 'AUTH_OK', user: session.user, token: session.token });
+}
+
 function sessionFor(socket: ServerWebSocket<SocketData>): PlayerSession | null {
   return socket.data.userId ? sessions.get(socket.data.userId) ?? null : null;
 }
@@ -210,6 +214,7 @@ function handleCreateTable(session: PlayerSession, request: CreateTableRequest):
   const { table, user } = createTable(session.user, request);
   session.user = user;
   session.tableId = table.id;
+  sendSession(session);
   broadcastLobby();
   broadcastTable(table);
 }
@@ -219,6 +224,7 @@ function handleJoinTable(session: PlayerSession, request: JoinTableRequest): voi
   const { table, user } = joinTable(session.user, request);
   session.user = user;
   session.tableId = table.id;
+  sendSession(session);
   broadcastLobby();
   broadcastTable(table);
 }
@@ -239,6 +245,7 @@ function leaveCurrentTable(session: PlayerSession): void {
 
   if (cashout > 0) {
     session.user = store.updateChipBalance(session.user.id, cashout);
+    sendSession(session);
   }
 
   if (table.isEmpty) {
@@ -277,9 +284,7 @@ function handleAction(session: PlayerSession, message: Extract<ClientToServerMes
 
   const result = table.act(session.user.id, message.action, message.amount ?? 0);
 
-  if (result.completedHand) {
-    store.recordHand(result.completedHand, table.id, result.completedHand.handNumber);
-  }
+  persistCompletedHand(result.completedHand, table.id);
 
   broadcastTable(table);
   scheduleBotTurn(table);
@@ -289,9 +294,7 @@ function scheduleBotTurn(table: PokerTable): void {
   table.scheduleBotTurn(() => {
     const result = table.runBotTurn();
 
-    if (result.completedHand) {
-      store.recordHand(result.completedHand, table.id, result.completedHand.handNumber);
-    }
+    persistCompletedHand(result.completedHand, table.id);
 
     if (result.action && result.difficulty) {
       void generateBotTableTalk({
@@ -330,6 +333,24 @@ function scheduleBotTurn(table: PokerTable): void {
     broadcastTable(table);
     scheduleBotTurn(table);
   });
+}
+
+function persistCompletedHand(hand: NonNullable<ReturnType<PokerTable['runBotTurn']>['completedHand']> | null, tableId: string): void {
+  if (!hand) {
+    return;
+  }
+
+  store.recordHand(hand, tableId, hand.handNumber);
+
+  for (const player of hand.players) {
+    const session = sessions.get(player.id);
+    const refreshed = session ? store.getByToken(session.token) : null;
+
+    if (session && refreshed) {
+      session.user = refreshed;
+      sendSession(session);
+    }
+  }
 }
 
 function handleSocketMessage(socket: ServerWebSocket<SocketData>, raw: string | Buffer): void {
@@ -420,6 +441,10 @@ async function route(request: Request, server: Bun.Server<SocketData>): Promise<
       return json(store.authenticate(body.username, body.token));
     }
 
+    if (request.method === 'GET' && url.pathname === '/me') {
+      return json({ user: requireUser(request) });
+    }
+
     if (request.method === 'GET' && url.pathname === '/lobby') {
       return json(lobbySnapshot());
     }
@@ -427,9 +452,9 @@ async function route(request: Request, server: Bun.Server<SocketData>): Promise<
     if (request.method === 'POST' && url.pathname === '/tables') {
       const user = requireUser(request);
       const body = await readJson<CreateTableRequest>(request);
-      const { table } = createTable(user, body);
+      const { table, user: updatedUser } = createTable(user, body);
       broadcastLobby();
-      return json({ table: table.summary() }, { status: 201 });
+      return json({ table: table.summary(), user: updatedUser }, { status: 201 });
     }
 
     const joinMatch = url.pathname.match(/^\/tables\/([^/]+)\/join$/);
@@ -437,9 +462,9 @@ async function route(request: Request, server: Bun.Server<SocketData>): Promise<
     if (request.method === 'POST' && joinMatch?.[1]) {
       const user = requireUser(request);
       const body = await readJson<Omit<JoinTableRequest, 'tableId'>>(request);
-      const { table } = joinTable(user, { ...body, tableId: joinMatch[1] });
+      const { table, user: updatedUser } = joinTable(user, { ...body, tableId: joinMatch[1] });
       broadcastLobby();
-      return json({ table: table.summary() });
+      return json({ table: table.summary(), user: updatedUser });
     }
 
     return json({ error: 'Not found.' }, { status: 404 });
