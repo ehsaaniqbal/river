@@ -41,9 +41,9 @@ async function fetchRiver<T>(path: string): Promise<T | null> {
 }
 
 export async function fetchRiverStats(): Promise<StatsResponse | null> {
-  return await fetchRiver<StatsResponse>('/stats');
+  return await fetchRiver<StatsResponse>('/api/stats');
 }
 
 export async function fetchRiverHistory(limit = 50): Promise<HistoryResponse | null> {
-  return await fetchRiver<HistoryResponse>(`/history?limit=${limit}`);
+  return await fetchRiver<HistoryResponse>(`/api/history?limit=${limit}`);
 }

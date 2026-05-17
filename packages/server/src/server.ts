@@ -423,47 +423,48 @@ class HttpError extends Error {
 
 async function route(request: Request, server: Bun.Server<SocketData>): Promise<Response> {
   const url = new URL(request.url);
+  const pathname = url.pathname.startsWith('/api/') ? url.pathname.slice(4) : url.pathname;
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  if (url.pathname === '/ws') {
+  if (pathname === '/ws') {
     const upgraded = server.upgrade(request, { data: { userId: null } });
     return upgraded ? new Response(null) : new Response('Upgrade failed', { status: 400 });
   }
 
   try {
-    if (request.method === 'GET' && url.pathname === '/health') {
+    if (request.method === 'GET' && pathname === '/health') {
       return json({ ok: true });
     }
 
-    if (request.method === 'POST' && url.pathname === '/auth') {
+    if (request.method === 'POST' && pathname === '/auth') {
       const body = await readJson<AuthRequest>(request);
       return json(store.authenticate(body.username, body.token));
     }
 
-    if (request.method === 'GET' && url.pathname === '/me') {
+    if (request.method === 'GET' && pathname === '/me') {
       return json({ user: requireUser(request) });
     }
 
-    if (request.method === 'GET' && url.pathname === '/stats') {
+    if (request.method === 'GET' && pathname === '/stats') {
       const user = requireUser(request);
       const refreshed = store.getById(user.id) ?? user;
       return json({ user: refreshed } satisfies StatsResponse);
     }
 
-    if (request.method === 'GET' && url.pathname === '/history') {
+    if (request.method === 'GET' && pathname === '/history') {
       const user = requireUser(request);
       const limit = Number(url.searchParams.get('limit') ?? 25);
       return json({ hands: store.listHandsForUser(user.id, limit) } satisfies HistoryResponse);
     }
 
-    if (request.method === 'GET' && url.pathname === '/lobby') {
+    if (request.method === 'GET' && pathname === '/lobby') {
       return json(lobbySnapshot());
     }
 
-    if (request.method === 'POST' && url.pathname === '/tables') {
+    if (request.method === 'POST' && pathname === '/tables') {
       const user = requireUser(request);
       const body = await readJson<CreateTableRequest>(request);
       const { table, user: updatedUser } = createTable(user, body);
@@ -471,7 +472,7 @@ async function route(request: Request, server: Bun.Server<SocketData>): Promise<
       return json({ table: table.summary(), user: updatedUser }, { status: 201 });
     }
 
-    const joinMatch = url.pathname.match(/^\/tables\/([^/]+)\/join$/);
+    const joinMatch = pathname.match(/^\/tables\/([^/]+)\/join$/);
 
     if (request.method === 'POST' && joinMatch?.[1]) {
       const user = requireUser(request);
