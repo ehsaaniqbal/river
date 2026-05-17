@@ -52,7 +52,7 @@ export function GameTable() {
             Take a seat, play the hand, and check the line when the decision is close.
           </p>
           <Button className="mt-6" onClick={() => initGame(defaultConfig)}>
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="size-4" />
             Start Practice
           </Button>
         </div>
@@ -74,7 +74,7 @@ export function GameTable() {
             </div>
           </div>
           <Button type="button" variant="secondary" className="rounded-md" onClick={nextHand} disabled={gameState.phase !== 'HAND_COMPLETE'}>
-            <RotateCcw className="h-4 w-4" />
+            <RotateCcw className="size-4" />
             Next Hand
           </Button>
         </header>

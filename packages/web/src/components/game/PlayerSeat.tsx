@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, LazyMotion, domAnimation, m } from 'framer-motion';
 import type { Player } from '@river/engine';
 import { cn } from '@/lib/utils';
 import { CardHand } from './CardHand';
@@ -57,7 +57,7 @@ function actionLabel(player: Player): string | null {
 function PlayerSeatComponent({ player, totalSeats, active = false, showCards = false, connection }: PlayerSeatProps) {
   const position = seatPosition(player.seatIndex, totalSeats);
   const label = actionLabel(player);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const disconnected = connection ? !connection.connected : false;
   const countdown = connection?.disconnectDeadline
     ? Math.max(0, Math.ceil((connection.disconnectDeadline - now) / 1000))
@@ -80,14 +80,14 @@ function PlayerSeatComponent({ player, totalSeats, active = false, showCards = f
     >
       <CardHand cards={player.holeCards} hidden={!player.isHuman} reveal={showCards || player.isHuman} />
       <div className={cn('min-w-32 rounded-md border bg-emerald-950/85 p-2 text-center shadow-xl shadow-black/25 backdrop-blur', active ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/50' : 'border-emerald-100/15')}>
-        <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--felt-light)] text-xs font-semibold text-[var(--text-primary)]">
+        <div className="mx-auto mb-1 flex size-8 items-center justify-center rounded-full bg-[var(--felt-light)] text-xs font-semibold text-[var(--text-primary)]">
           {initials(player.name)}
         </div>
         <div className="flex items-center justify-center gap-1.5">
           {connection && (
             <span
               className={cn(
-                'h-2 w-2 rounded-full',
+                'size-2 rounded-full',
                 connection.connected && 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.55)]',
                 disconnected && countdown === null && 'bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.45)]',
                 disconnected && countdown !== null && 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.55)]',
@@ -103,20 +103,22 @@ function PlayerSeatComponent({ player, totalSeats, active = false, showCards = f
             {countdown !== null ? `FOLD ${countdown}s` : 'OFFLINE'}
           </div>
         )}
-        <AnimatePresence>
-          {label && (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.18 }}
-              className="mt-1 rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] text-amber-100"
-            >
-              {label}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <LazyMotion features={domAnimation}>
+          <AnimatePresence>
+            {label && (
+              <m.div
+                key={label}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+                className="mt-1 rounded bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] text-amber-100"
+              >
+                {label}
+              </m.div>
+            )}
+          </AnimatePresence>
+        </LazyMotion>
       </div>
     </div>
   );

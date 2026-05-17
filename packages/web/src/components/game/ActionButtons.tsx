@@ -41,7 +41,7 @@ export function ActionButtons({ state, legal, onAction }: ActionButtonsProps) {
           disabled={!legal.canFold}
           onClick={() => void submitAction('FOLD')}
         >
-          <OctagonX className="h-4 w-4" />
+          <OctagonX className="size-4" />
           Fold
         </Button>
         {legal.canCheck ? (
@@ -51,7 +51,7 @@ export function ActionButtons({ state, legal, onAction }: ActionButtonsProps) {
             variant="secondary"
             onClick={() => void submitAction('CHECK')}
           >
-            <Hand className="h-4 w-4" />
+            <Hand className="size-4" />
             Check
           </Button>
         ) : (
@@ -62,7 +62,7 @@ export function ActionButtons({ state, legal, onAction }: ActionButtonsProps) {
             disabled={!legal.canCall}
             onClick={() => void submitAction('CALL')}
           >
-            <Hand className="h-4 w-4" />
+            <Hand className="size-4" />
             Call {legal.callAmount}
           </Button>
         )}
@@ -79,7 +79,7 @@ export function ActionButtons({ state, legal, onAction }: ActionButtonsProps) {
             }
           }}
         >
-          <CircleDollarSign className="h-4 w-4" />
+          <CircleDollarSign className="size-4" />
           {sliderOpen ? 'Confirm' : legal.canRaise ? 'Raise' : 'Bet'}
         </Button>
       </div>
