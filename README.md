@@ -1,6 +1,6 @@
 # River
 
-River is a poker learning and play app. It has a Next.js frontend, a pure TypeScript poker engine, a Bun WebSocket server, and shared protocol types.
+River is a poker learning and play app. 
 
 ## Packages
 
@@ -101,7 +101,3 @@ Server:
 Web:
 
 - `NEXT_PUBLIC_RIVER_SERVER_URL`: HTTP URL for the Bun server.
-
-## Notes
-
-SQLite is enough for local work and a small single-server deploy with a persistent disk and backups. For a real hosted multiplayer setup, move account, chip, stats, and hand history data to Postgres, then add recovery for active table buy-ins.
