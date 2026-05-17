@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '@river/engine';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,10 @@ type PlayerSeatProps = {
   totalSeats: number;
   active?: boolean;
   showCards?: boolean;
+  connection?: {
+    connected: boolean;
+    disconnectDeadline: number | null;
+  };
 };
 
 function seatPosition(seatIndex: number, totalSeats: number): { x: number; y: number } {
@@ -50,9 +54,24 @@ function actionLabel(player: Player): string | null {
   return null;
 }
 
-function PlayerSeatComponent({ player, totalSeats, active = false, showCards = false }: PlayerSeatProps) {
+function PlayerSeatComponent({ player, totalSeats, active = false, showCards = false, connection }: PlayerSeatProps) {
   const position = seatPosition(player.seatIndex, totalSeats);
   const label = actionLabel(player);
+  const [now, setNow] = useState(Date.now());
+  const disconnected = connection ? !connection.connected : false;
+  const countdown = connection?.disconnectDeadline
+    ? Math.max(0, Math.ceil((connection.disconnectDeadline - now) / 1000))
+    : null;
+
+  useEffect(() => {
+    if (!connection?.disconnectDeadline || connection.connected) {
+      return;
+    }
+
+    const interval = window.setInterval(() => setNow(Date.now()), 500);
+
+    return () => window.clearInterval(interval);
+  }, [connection?.connected, connection?.disconnectDeadline]);
 
   return (
     <div
@@ -64,8 +83,26 @@ function PlayerSeatComponent({ player, totalSeats, active = false, showCards = f
         <div className="mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--felt-light)] text-xs font-semibold text-[var(--text-primary)]">
           {initials(player.name)}
         </div>
-        <div className="max-w-28 truncate text-sm font-semibold text-[var(--text-primary)]">{player.name}</div>
+        <div className="flex items-center justify-center gap-1.5">
+          {connection && (
+            <span
+              className={cn(
+                'h-2 w-2 rounded-full',
+                connection.connected && 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.55)]',
+                disconnected && countdown === null && 'bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.45)]',
+                disconnected && countdown !== null && 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.55)]',
+              )}
+              aria-label={connection.connected ? 'Connected' : 'Disconnected'}
+            />
+          )}
+          <div className="max-w-28 truncate text-sm font-semibold text-[var(--text-primary)]">{player.name}</div>
+        </div>
         <div className="font-mono text-xs text-[var(--text-muted)]">{player.position} · {player.stack}</div>
+        {disconnected && (
+          <div className="mt-1 font-mono text-[10px] text-red-100">
+            {countdown !== null ? `FOLD ${countdown}s` : 'OFFLINE'}
+          </div>
+        )}
         <AnimatePresence>
           {label && (
             <motion.div

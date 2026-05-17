@@ -198,8 +198,6 @@ export default function LobbyPage() {
                   The lobby updates over the WebSocket connection.
                 </div>
               )}
-
-              <input type="hidden" value={heroPlayerId ?? ''} readOnly />
             </section>
           </div>
         )}
@@ -249,6 +247,12 @@ function MultiplayerTable() {
   const legal = actionState ? getLegalActions(actionState) : null;
   const hero = state?.players.find((player) => player.id === heroPlayerId);
 
+  useEffect(() => {
+    if (state?.phase === 'HAND_COMPLETE') {
+      setShowWinner(true);
+    }
+  }, [state?.handNumber, state?.phase]);
+
   if (!table || !state || !actionState || !legal) {
     return null;
   }
@@ -290,8 +294,11 @@ function MultiplayerTable() {
                 totalSeats={state.players.length}
                 active={state.players[state.currentPlayerIndex]?.id === player.id}
                 showCards={state.phase === 'HAND_COMPLETE'}
+                connection={{
+                  connected: player.connected,
+                  disconnectDeadline: player.disconnectDeadline,
+                }}
               />
-              <SeatStatus playerId={player.id} />
             </div>
           );
         })}
@@ -304,21 +311,6 @@ function MultiplayerTable() {
         <HandStrengthMeter holeCards={hero?.holeCards ?? null} communityCards={state.communityCards} />
         <ActionButtons state={actionState} legal={legal} onAction={sendAction} />
       </div>
-    </div>
-  );
-}
-
-function SeatStatus({ playerId }: { playerId: string }) {
-  const state = useMultiplayerStore((store) => store.tableState);
-  const player = state?.players.find((seat) => seat.id === playerId);
-
-  if (!player || player.connected) {
-    return null;
-  }
-
-  return (
-    <div className="sr-only">
-      {player.name} disconnected
     </div>
   );
 }
