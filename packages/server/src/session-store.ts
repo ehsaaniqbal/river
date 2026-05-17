@@ -106,6 +106,19 @@ export class SessionStore {
     };
   }
 
+  getByToken(existingToken: string): SessionUser | null {
+    const row = this.db.query<UserRow, [string]>('select * from users where token = ?').get(existingToken);
+
+    if (!row) {
+      return null;
+    }
+
+    const now = Date.now();
+    this.db.query('update users set last_seen_at = ? where id = ?').run(now, row.id);
+
+    return { ...rowToUser(row), lastSeenAt: now };
+  }
+
   updateChipBalance(userId: string, delta: number): SessionUser {
     this.db.query('update users set chip_balance = max(chip_balance + ?, 0), last_seen_at = ? where id = ?')
       .run(delta, Date.now(), userId);
